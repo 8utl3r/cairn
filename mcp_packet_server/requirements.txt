@@ -1,13 +1,22 @@
 # MCP Packet Server Requirements
-# Core dependencies for the proof of concept
+# Core dependencies for production use
 
-# No external dependencies required for the basic proof of concept
-# Uses only Python standard library
+# HTTP requests
+requests>=2.28.0
 
-# For production use, you would add:
-# requests>=2.28.0
-# google-auth>=2.0.0
-# google-auth-oauthlib>=1.0.0
-# google-auth-httplib2>=0.1.0
-# google-api-python-client>=2.0.0
-# todoist-api-python>=2.1.3
+# Google API dependencies
+google-auth>=2.0.0
+google-auth-oauthlib>=1.0.0
+google-auth-httplib2>=0.1.0
+google-api-python-client>=2.0.0
+
+# Todoist API
+todoist-api-python>=2.1.3
+
+# Environment variable management
+python-dotenv>=1.0.0
+
+# Development dependencies
+ruff>=0.3.0
+mypy>=1.8.0
+types-requests>=2.31.0

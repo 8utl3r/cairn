@@ -1,0 +1,128 @@
+{
+  "create": {
+    "success": true,
+    "data": {
+      "task": {
+        "id": "task_1756076590",
+        "content": "Live test task from MCP",
+        "due": null,
+        "priority": 1,
+        "project_id": null,
+        "labels": [],
+        "status": "active",
+        "created_at": 1756076590.814276
+      },
+      "message": "Task created successfully (mock mode)"
+    },
+    "packet": {
+      "tool_type": "todoist",
+      "action": "create",
+      "item_type": "task",
+      "payload": {
+        "content": "Live test task from MCP"
+      },
+      "packet_id": "57db04ec-3e7c-4825-847c-bcc529ca1fa0",
+      "timestamp": "2025-08-24T23:03:10.814224",
+      "priority": "normal",
+      "user_id": null,
+      "session_id": null,
+      "status": "success",
+      "error_details": null,
+      "validation_results": {
+        "is_valid": true,
+        "validation_errors": [],
+        "validation_warnings": [],
+        "validation_passed": [
+          "field_types",
+          "enum_values",
+          "payload_structure",
+          "checksum_validation"
+        ],
+        "validation_timestamp": "2025-08-24T23:03:10.814259"
+      },
+      "processing_log": [
+        {
+          "step": "packet_received",
+          "type": "VALIDATION",
+          "timestamp": "2025-08-24T23:03:10.814242",
+          "status": "SUCCESS",
+          "duration_ms": null,
+          "details": null,
+          "error_details": null
+        },
+        {
+          "step": "format_validation",
+          "type": "VALIDATION",
+          "timestamp": "2025-08-24T23:03:10.814262",
+          "status": "SUCCESS",
+          "duration_ms": 0.014066696166992188,
+          "details": {
+            "validation_results": {
+              "is_valid": true,
+              "validation_errors": [],
+              "validation_warnings": [],
+              "validation_passed": [
+                "field_types",
+                "enum_values",
+                "payload_structure",
+                "checksum_validation"
+              ],
+              "validation_timestamp": "2025-08-24T23:03:10.814259"
+            }
+          },
+          "error_details": null
+        },
+        {
+          "step": "service_routing",
+          "type": "ROUTING",
+          "timestamp": "2025-08-24T23:03:10.814266",
+          "status": "SUCCESS",
+          "duration_ms": null,
+          "details": {
+            "target_service": "todoist"
+          },
+          "error_details": null
+        },
+        {
+          "step": "action_validation",
+          "type": "VALIDATION",
+          "timestamp": "2025-08-24T23:03:10.814269",
+          "status": "SUCCESS",
+          "duration_ms": null,
+          "details": {
+            "supported_action": "create"
+          },
+          "error_details": null
+        },
+        {
+          "step": "item_type_validation",
+          "type": "VALIDATION",
+          "timestamp": "2025-08-24T23:03:10.814271",
+          "status": "SUCCESS",
+          "duration_ms": null,
+          "details": {
+            "supported_item_type": "task"
+          },
+          "error_details": null
+        },
+        {
+          "step": "packet_execution",
+          "type": "EXECUTION",
+          "timestamp": "2025-08-24T23:03:10.814285",
+          "status": "SUCCESS",
+          "duration_ms": 0.0030994415283203125,
+          "details": {
+            "result_summary": "{'task': {'id': 'task_1756076590', 'content': 'Live test task from MCP', 'due': None, 'priority': 1,..."
+          },
+          "error_details": null
+        }
+      ],
+      "checksum": "23764516",
+      "version": "1.0"
+    },
+    "execution_duration_ms": 0.0030994415283203125
+  },
+  "read": null,
+  "update": null,
+  "delete": null
+}

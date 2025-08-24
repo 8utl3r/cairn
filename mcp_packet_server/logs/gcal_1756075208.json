@@ -1,0 +1,158 @@
+{
+  "create": {
+    "success": false,
+    "error": "Service execution failed",
+    "packet": {
+      "tool_type": "gcal",
+      "action": "create",
+      "item_type": "event",
+      "payload": {
+        "summary": "MCP Live Test Event",
+        "start": {
+          "dateTime": "2030-01-01T09:00:00Z"
+        },
+        "end": {
+          "dateTime": "2030-01-01T10:00:00Z"
+        }
+      },
+      "packet_id": "5a1da87a-0935-4a9b-9a8d-4e8400851ce4",
+      "timestamp": "2025-08-24T22:40:08.612671",
+      "priority": "normal",
+      "user_id": null,
+      "session_id": null,
+      "status": "error",
+      "error_details": {
+        "error_type": "EXECUTION_ERROR",
+        "error_code": "SERVICE_EXECUTION_FAILED",
+        "error_message": "Service execution failed: 'NoneType' object has no attribute 'replace'",
+        "error_location": "service_execution",
+        "field_path": [
+          "execution"
+        ],
+        "expected_format": null,
+        "actual_value": "Exception: AttributeError: 'NoneType' object has no attribute 'replace'",
+        "suggestions": [
+          "Check service connectivity",
+          "Verify payload parameters",
+          "Review service logs"
+        ],
+        "severity": "ERROR"
+      },
+      "validation_results": null,
+      "processing_log": [
+        {
+          "step": "packet_received",
+          "type": "VALIDATION",
+          "timestamp": "2025-08-24T22:40:08.612682",
+          "status": "SUCCESS",
+          "duration_ms": null,
+          "details": null,
+          "error_details": null
+        },
+        {
+          "step": "format_validation",
+          "type": "VALIDATION",
+          "timestamp": "2025-08-24T22:40:08.612705",
+          "status": "SUCCESS",
+          "duration_ms": 0.02002716064453125,
+          "details": {
+            "validation_results": {
+              "is_valid": true,
+              "validation_errors": [],
+              "validation_warnings": [],
+              "validation_passed": [
+                "required_fields",
+                "field_types",
+                "enum_values",
+                "payload_structure",
+                "checksum_validation",
+                "timestamp_format",
+                "uuid_format"
+              ],
+              "validation_timestamp": "2025-08-24T22:40:08.612703"
+            }
+          },
+          "error_details": null
+        },
+        {
+          "step": "service_routing",
+          "type": "ROUTING",
+          "timestamp": "2025-08-24T22:40:08.612708",
+          "status": "SUCCESS",
+          "duration_ms": null,
+          "details": {
+            "target_service": "gcal"
+          },
+          "error_details": null
+        },
+        {
+          "step": "action_validation",
+          "type": "VALIDATION",
+          "timestamp": "2025-08-24T22:40:08.612711",
+          "status": "SUCCESS",
+          "duration_ms": null,
+          "details": {
+            "supported_action": "create"
+          },
+          "error_details": null
+        },
+        {
+          "step": "item_type_validation",
+          "type": "VALIDATION",
+          "timestamp": "2025-08-24T22:40:08.612714",
+          "status": "SUCCESS",
+          "duration_ms": null,
+          "details": {
+            "supported_item_type": "event"
+          },
+          "error_details": null
+        },
+        {
+          "step": "packet_execution",
+          "type": "EXECUTION",
+          "timestamp": "2025-08-24T22:40:08.612725",
+          "status": "FAILED",
+          "duration_ms": null,
+          "details": null,
+          "error_details": {
+            "error_type": "EXECUTION_ERROR",
+            "error_code": "SERVICE_EXECUTION_FAILED",
+            "error_message": "Service execution failed: 'NoneType' object has no attribute 'replace'",
+            "error_location": "service_execution",
+            "field_path": [
+              "execution"
+            ],
+            "expected_format": null,
+            "actual_value": "Exception: AttributeError: 'NoneType' object has no attribute 'replace'",
+            "suggestions": [
+              "Check service connectivity",
+              "Verify payload parameters",
+              "Review service logs"
+            ],
+            "severity": "ERROR"
+          }
+        }
+      ],
+      "checksum": "46274044",
+      "version": "1.0"
+    },
+    "validation_results": {
+      "is_valid": true,
+      "validation_errors": [],
+      "validation_warnings": [],
+      "validation_passed": [
+        "required_fields",
+        "field_types",
+        "enum_values",
+        "payload_structure",
+        "checksum_validation",
+        "timestamp_format",
+        "uuid_format"
+      ],
+      "validation_timestamp": "2025-08-24T22:40:08.612703"
+    }
+  },
+  "read": null,
+  "update": null,
+  "delete": null
+}

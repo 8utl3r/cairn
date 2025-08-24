@@ -1,0 +1,132 @@
+{
+  "create": {
+    "success": true,
+    "data": {
+      "design": {
+        "id": "design_1756074358",
+        "name": "Live MCP Test PCB",
+        "description": "",
+        "layers": 2,
+        "status": "draft",
+        "created_at": "2025-08-24T17:25:58.142859"
+      },
+      "message": "PCB design created successfully"
+    },
+    "packet": {
+      "tool_type": "deep_pcb",
+      "action": "create",
+      "item_type": "pcb_design",
+      "payload": {
+        "design_name": "Live MCP Test PCB"
+      },
+      "packet_id": "3adc59d1-2c82-4d42-acef-a460576e2f2f",
+      "timestamp": "2025-08-24T22:25:58.142808",
+      "priority": "normal",
+      "user_id": null,
+      "session_id": null,
+      "status": "success",
+      "error_details": null,
+      "validation_results": {
+        "is_valid": true,
+        "validation_errors": [],
+        "validation_warnings": [],
+        "validation_passed": [
+          "required_fields",
+          "field_types",
+          "enum_values",
+          "payload_structure",
+          "checksum_validation",
+          "timestamp_format",
+          "uuid_format"
+        ],
+        "validation_timestamp": "2025-08-24T22:25:58.142840"
+      },
+      "processing_log": [
+        {
+          "step": "packet_received",
+          "type": "VALIDATION",
+          "timestamp": "2025-08-24T22:25:58.142816",
+          "status": "SUCCESS",
+          "duration_ms": null,
+          "details": null,
+          "error_details": null
+        },
+        {
+          "step": "format_validation",
+          "type": "VALIDATION",
+          "timestamp": "2025-08-24T22:25:58.142842",
+          "status": "SUCCESS",
+          "duration_ms": 0.023126602172851562,
+          "details": {
+            "validation_results": {
+              "is_valid": true,
+              "validation_errors": [],
+              "validation_warnings": [],
+              "validation_passed": [
+                "required_fields",
+                "field_types",
+                "enum_values",
+                "payload_structure",
+                "checksum_validation",
+                "timestamp_format",
+                "uuid_format"
+              ],
+              "validation_timestamp": "2025-08-24T22:25:58.142840"
+            }
+          },
+          "error_details": null
+        },
+        {
+          "step": "service_routing",
+          "type": "ROUTING",
+          "timestamp": "2025-08-24T22:25:58.142846",
+          "status": "SUCCESS",
+          "duration_ms": null,
+          "details": {
+            "target_service": "deep_pcb"
+          },
+          "error_details": null
+        },
+        {
+          "step": "action_validation",
+          "type": "VALIDATION",
+          "timestamp": "2025-08-24T22:25:58.142850",
+          "status": "SUCCESS",
+          "duration_ms": null,
+          "details": {
+            "supported_action": "create"
+          },
+          "error_details": null
+        },
+        {
+          "step": "item_type_validation",
+          "type": "VALIDATION",
+          "timestamp": "2025-08-24T22:25:58.142854",
+          "status": "SUCCESS",
+          "duration_ms": null,
+          "details": {
+            "supported_item_type": "pcb_design"
+          },
+          "error_details": null
+        },
+        {
+          "step": "packet_execution",
+          "type": "EXECUTION",
+          "timestamp": "2025-08-24T22:25:58.142870",
+          "status": "SUCCESS",
+          "duration_ms": 0.007867813110351562,
+          "details": {
+            "result_summary": "{'design': {'id': 'design_1756074358', 'name': 'Live MCP Test PCB', 'description': '', 'layers': 2, ..."
+          },
+          "error_details": null
+        }
+      ],
+      "checksum": "12998478",
+      "version": "1.0"
+    },
+    "execution_duration_ms": 0.007867813110351562
+  },
+  "read": null,
+  "update": null,
+  "delete": null
+}

@@ -7,16 +7,21 @@ Enhanced with comprehensive tripwire validation and error handling
 import asyncio
 import json
 import time
-from typing import Any, Dict, List, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from packet import MCPPacket, PacketResponse, PacketStatus, ErrorDetails
-from service_handlers import (
-    TodoistServiceHandler, 
-    GoogleCalendarServiceHandler, 
-    GmailServiceHandler
-)
+from bootstrap import init_env
+
+init_env()
+
 from dynamic_tool_manager import DynamicToolManager
+from packet import ErrorDetails, MCPPacket, PacketStatus
+from services import (
+    DeepPCBServiceHandler,
+    GmailServiceHandler,
+    GoogleCalendarServiceHandler,
+    TodoistServiceHandler,
+)
 from validation_tripwires import PacketValidationTripwires, ServiceValidationTripwires
 
 
@@ -34,7 +39,7 @@ class EnhancedMCPServer:
     - Comprehensive tripwire validation system
     - Rich error handling and debugging
     """
-    
+
     def __init__(self, cache_policy: str = "lfu", max_tools: int = 80):
         """
         Initialize enhanced MCP server
@@ -45,167 +50,71 @@ class EnhancedMCPServer:
         """
         # Initialize dynamic tool manager
         self.tool_manager = DynamicToolManager(cache_policy=cache_policy, max_tools=max_tools)
-        
+
         # Service handlers (always loaded)
         self.service_handlers = {
             'todoist': TodoistServiceHandler(),
             'gcal': GoogleCalendarServiceHandler(),
-            'gmail': GmailServiceHandler()
+            'gmail': GmailServiceHandler(),
+            'deep_pcb': DeepPCBServiceHandler()
         }
-        
+
         # Initialize tripwire validation system
-        self.packet_tripwires = PacketValidationTripwires()
+        self.packet_tripwires = PacketValidationTripwires(self.service_handlers)
         self.service_tripwires = ServiceValidationTripwires()
-        
+
         # Register service handlers with validation tripwires
         for service_name, handler in self.service_handlers.items():
             self.service_tripwires.register_service_handler(service_name, handler)
-        
-        # Register all 137 individual tools for dynamic loading
+
+        # Register all 167 individual tools for dynamic loading
         self._register_all_tools()
-        
+
         # Packet execution tracking
         self.packet_queue = {}
         self.execution_history = {}
-        
+
         # Register core tools (always loaded)
         self.tools = self._register_core_tools()
         self.resources = self._register_resources()
-        
+
         print(f"🚀 Enhanced MCP Server initialized with {cache_policy.upper()} policy")
         print(f"📊 Tool limit: {max_tools}")
         print(f"🔧 Available services: {len(self.service_handlers)}")
-        print(f"🚨 Tripwire validation system: ACTIVE")
-    
+        print("🚨 Tripwire validation system: ACTIVE")
+
     def _register_all_tools(self):
-        """Register all 137 individual tools for dynamic loading"""
-        
-        # Todoist tools (24 total)
-        todoist_tools = [
-            # Task operations
-            ("create_todoist_task", "todoist"),
-            ("read_todoist_task", "todoist"),
-            ("update_todoist_task", "todoist"),
-            ("delete_todoist_task", "todoist"),
-            ("list_todoist_tasks", "todoist"),
-            ("search_todoist_tasks", "todoist"),
-            
-            # Project operations
-            ("create_todoist_project", "todoist"),
-            ("read_todoist_project", "todoist"),
-            ("update_todoist_project", "todoist"),
-            ("delete_todoist_project", "todoist"),
-            ("list_todoist_projects", "todoist"),
-            ("search_todoist_projects", "todoist"),
-            
-            # Label operations
-            ("create_todoist_label", "todoist"),
-            ("read_todoist_label", "todoist"),
-            ("update_todoist_label", "todoist"),
-            ("delete_todoist_label", "todoist"),
-            ("list_todoist_labels", "todoist"),
-            ("search_todoist_labels", "todoist"),
-            
-            # Comment operations
-            ("create_todoist_comment", "todoist"),
-            ("read_todoist_comment", "todoist"),
-            ("update_todoist_comment", "todoist"),
-            ("delete_todoist_comment", "todoist"),
-            ("list_todoist_comments", "todoist"),
-            ("search_todoist_comments", "todoist"),
-        ]
-        
-        # Google Calendar tools (24 total)
-        gcal_tools = [
-            # Event operations
-            ("create_gcal_event", "gcal"),
-            ("read_gcal_event", "gcal"),
-            ("update_gcal_event", "gcal"),
-            ("delete_gcal_event", "gcal"),
-            ("list_gcal_events", "gcal"),
-            ("search_gcal_events", "gcal"),
-            
-            # Calendar operations
-            ("create_gcal_calendar", "gcal"),
-            ("read_gcal_calendar", "gcal"),
-            ("update_gcal_calendar", "gcal"),
-            ("delete_gcal_calendar", "gcal"),
-            ("list_gcal_calendars", "gcal"),
-            ("search_gcal_calendars", "gcal"),
-            
-            # Reminder operations
-            ("create_gcal_reminder", "gcal"),
-            ("read_gcal_reminder", "gcal"),
-            ("update_gcal_reminder", "gcal"),
-            ("delete_gcal_reminder", "gcal"),
-            ("list_gcal_reminders", "gcal"),
-            ("search_gcal_reminders", "gcal"),
-            
-            # Additional operations
-            ("get_gcal_free_busy", "gcal"),
-            ("get_gcal_events_today", "gcal"),
-            ("get_gcal_upcoming_events", "gcal"),
-            ("get_gcal_calendar_acl", "gcal"),
-            ("share_gcal_calendar", "gcal"),
-            ("move_gcal_event", "gcal"),
-        ]
-        
-        # Gmail tools (24 total)
-        gmail_tools = [
-            # Email operations
-            ("create_gmail_email", "gmail"),
-            ("read_gmail_email", "gmail"),
-            ("update_gmail_email", "gmail"),
-            ("delete_gmail_email", "gmail"),
-            ("list_gmail_emails", "gmail"),
-            ("search_gmail_emails", "gmail"),
-            
-            # Label operations
-            ("create_gmail_label", "gmail"),
-            ("read_gmail_label", "gmail"),
-            ("update_gmail_label", "gmail"),
-            ("delete_gmail_label", "gmail"),
-            ("list_gmail_labels", "gmail"),
-            ("search_gmail_labels", "gmail"),
-            
-            # Attachment operations
-            ("create_gmail_attachment", "gmail"),
-            ("read_gmail_attachment", "gmail"),
-            ("update_gmail_attachment", "gmail"),
-            ("delete_gmail_attachment", "gmail"),
-            ("list_gmail_attachments", "gmail"),
-            ("search_gmail_attachments", "gmail"),
-            
-            # Additional operations
-            ("mark_gmail_read", "gmail"),
-            ("mark_gmail_unread", "gmail"),
-            ("get_gmail_unread", "gmail"),
-            ("get_gmail_today", "gmail"),
-            ("get_gmail_by_date_range", "gmail"),
-            ("get_gmail_by_label", "gmail"),
-        ]
-        
-        # Register all tools
-        all_tools = todoist_tools + gcal_tools + gmail_tools
-        
-        for tool_name, service in all_tools:
-            # Create a loader function for each tool
-            def create_loader(service_name, tool_name):
-                def loader():
-                    return {
-                        "name": tool_name,
-                        "service": service_name,
-                        "type": "individual_tool",
-                        "loaded_at": time.time()
-                    }
-                return loader
-            
-            self.tool_manager.register_tool(tool_name, create_loader(service, tool_name), service)
-        
-        print(f"📝 Registered {len(all_tools)} individual tools for dynamic loading")
-    
+        """Dynamically register tools based on service handler capabilities"""
+        all_tools = []
+
+        for service_name, handler in self.service_handlers.items():
+            # Generate tool names for each supported action + item_type combination
+            for action in handler.supported_actions:
+                for item_type in handler.supported_item_types:
+                    tool_name = f"{action}_{service_name}_{item_type}"
+                    all_tools.append((tool_name, service_name))
+
+            # Also register generic action tools (e.g., "create_todoist" for any item type)
+            for action in handler.supported_actions:
+                generic_tool_name = f"{action}_{service_name}"
+                all_tools.append((generic_tool_name, service_name))
+
+        # Register all discovered tools
+        for tool_name, service_name in all_tools:
+            self.tool_manager.register_tool(tool_name, service_name)
+
+        print(f"🔧 Dynamically registered {len(all_tools)} tools from service handlers")
+        return all_tools
+
     def _register_core_tools(self) -> Dict[str, Dict[str, Any]]:
         """Register the core MCP tools (always loaded)"""
+        # Get dynamic service and action lists from handlers
+        available_services = list(self.service_handlers.keys())
+        available_actions = []
+        for handler in self.service_handlers.values():
+            available_actions.extend(handler.supported_actions)
+        available_actions = list(set(available_actions))  # Remove duplicates
+
         return {
             "execute_packet": {
                 "name": "execute_packet",
@@ -215,13 +124,13 @@ class EnhancedMCPServer:
                     "properties": {
                         "tool_type": {
                             "type": "string",
-                            "description": "Service type: todoist, gcal, or gmail",
-                            "enum": ["todoist", "gcal", "gmail"]
+                            "description": f"Service type: {', '.join(available_services)}",
+                            "enum": available_services
                         },
                         "action": {
-                            "type": "string", 
-                            "description": "Action to perform: create, read, update, delete, list, search",
-                            "enum": ["create", "read", "update", "delete", "list", "search"]
+                            "type": "string",
+                            "description": f"Action to perform: {', '.join(available_actions)}",
+                            "enum": available_actions
                         },
                         "item_type": {
                             "type": "string",
@@ -241,7 +150,7 @@ class EnhancedMCPServer:
                     "required": ["tool_type", "action", "item_type", "payload"]
                 }
             },
-            
+
             "list_services": {
                 "name": "list_services",
                 "description": "List all available services and their capabilities",
@@ -256,7 +165,7 @@ class EnhancedMCPServer:
                     }
                 }
             },
-            
+
             "get_service_schema": {
                 "name": "get_service_schema",
                 "description": "Get detailed schema for a specific service",
@@ -266,13 +175,13 @@ class EnhancedMCPServer:
                         "service_name": {
                             "type": "string",
                             "description": "Name of the service to get schema for",
-                            "enum": ["todoist", "gcal", "gmail"]
+                            "enum": available_services
                         }
                     },
                     "required": ["service_name"]
                 }
             },
-            
+
             "batch_execute": {
                 "name": "batch_execute",
                 "description": "Execute multiple packets in a single request",
@@ -302,7 +211,7 @@ class EnhancedMCPServer:
                     "required": ["packets"]
                 }
             },
-            
+
             "get_packet_status": {
                 "name": "get_packet_status",
                 "description": "Check the status of a previously submitted packet",
@@ -317,7 +226,7 @@ class EnhancedMCPServer:
                     "required": ["packet_id"]
                 }
             },
-            
+
             # New dynamic tool management tools
             "load_tool": {
                 "name": "load_tool",
@@ -333,7 +242,7 @@ class EnhancedMCPServer:
                     "required": ["tool_name"]
                 }
             },
-            
+
             "unload_tool": {
                 "name": "unload_tool",
                 "description": "Unload a specific tool from memory",
@@ -348,7 +257,7 @@ class EnhancedMCPServer:
                     "required": ["tool_name"]
                 }
             },
-            
+
             "get_tool_status": {
                 "name": "get_tool_status",
                 "description": "Get status of a specific tool",
@@ -363,7 +272,7 @@ class EnhancedMCPServer:
                     "required": ["tool_name"]
                 }
             },
-            
+
             "get_performance_metrics": {
                 "name": "get_performance_metrics",
                 "description": "Get performance metrics and cache statistics",
@@ -372,7 +281,7 @@ class EnhancedMCPServer:
                     "properties": {}
                 }
             },
-            
+
             "optimize_cache": {
                 "name": "optimize_cache",
                 "description": "Optimize the tool cache by evicting low-usage tools",
@@ -381,7 +290,7 @@ class EnhancedMCPServer:
                     "properties": {}
                 }
             },
-            
+
             "set_cache_policy": {
                 "name": "set_cache_policy",
                 "description": "Change the cache eviction policy (LRU/LFU)",
@@ -397,7 +306,7 @@ class EnhancedMCPServer:
                     "required": ["policy"]
                 }
             },
-            
+
             "set_max_tools": {
                 "name": "set_max_tools",
                 "description": "Change the maximum number of tools in memory",
@@ -414,7 +323,7 @@ class EnhancedMCPServer:
                 }
             }
         }
-    
+
     def _register_resources(self) -> Dict[str, Dict[str, Any]]:
         """Register MCP resources"""
         return {
@@ -425,7 +334,7 @@ class EnhancedMCPServer:
                 "mimeType": "application/json"
             },
             "mcp://packet-schema": {
-                "uri": "mcp://packet-schema", 
+                "uri": "mcp://packet-schema",
                 "name": "Packet Schema",
                 "description": "Schema definition for MCP packets",
                 "mimeType": "application/json"
@@ -437,7 +346,7 @@ class EnhancedMCPServer:
                 "mimeType": "application/json"
             }
         }
-    
+
     async def handle_tool_call(self, name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Route tool calls to appropriate handlers"""
         if name == "execute_packet":
@@ -467,11 +376,11 @@ class EnhancedMCPServer:
             return await self._set_max_tools(arguments)
         else:
             return {"success": False, "error": f"Unknown tool: {name}"}
-    
+
     async def _execute_packet(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a single MCP packet with comprehensive tripwire validation"""
         start_time = time.time()
-        
+
         try:
             # Add processing step: received
             packet = MCPPacket(
@@ -481,27 +390,27 @@ class EnhancedMCPServer:
                 payload=arguments["payload"],
                 priority=arguments.get("priority", "normal")
             )
-            
+
             packet.add_processing_step(
                 step_name="packet_received",
                 step_type="VALIDATION",
                 status="SUCCESS"
             )
-            
+
             # TRIPWIRE 1: Format and Input Validation
             validation_start = time.time()
             validation_results = self.packet_tripwires.validate_packet(packet)
             validation_duration = (time.time() - validation_start) * 1000
-            
+
             # Add processing step: validation
             packet.add_processing_step(
                 step_name="format_validation",
                 step_type="VALIDATION",
                 status="SUCCESS" if validation_results.is_valid else "FAILED",
                 duration_ms=validation_duration,
-                details={"validation_results": validation_results}
+                details={"validation_results": validation_results.to_dict()}
             )
-            
+
             # If validation failed, return detailed error packet
             if not validation_results.is_valid:
                 packet.status = PacketStatus.ERROR
@@ -514,7 +423,7 @@ class EnhancedMCPServer:
                     suggestions=["Review error details and fix packet format"]
                 )
                 packet.validation_results = validation_results
-                
+
                 # Add processing step: validation failed
                 packet.add_processing_step(
                     step_name="validation_failed",
@@ -522,7 +431,7 @@ class EnhancedMCPServer:
                     status="FAILED",
                     error_details=packet.error_details
                 )
-                
+
                 # Return packet with all error details for host agent to analyze
                 return {
                     "success": False,
@@ -530,13 +439,13 @@ class EnhancedMCPServer:
                     "packet": packet.to_dict(),
                     "validation_results": validation_results.to_dict()
                 }
-            
+
             # TRIPWIRE 2: Service Availability Check
             service_availability_result = self.service_tripwires.validate_service_availability(packet)
             if not service_availability_result.is_valid:
                 packet.status = PacketStatus.ERROR
                 packet.error_details = service_availability_result.validation_errors[0]
-                
+
                 # Add processing step: routing failed
                 packet.add_processing_step(
                     step_name="service_routing",
@@ -544,13 +453,13 @@ class EnhancedMCPServer:
                     status="FAILED",
                     error_details=packet.error_details
                 )
-                
+
                 return {
                     "success": False,
                     "error": "Service not available",
                     "packet": packet.to_dict()
                 }
-            
+
             # Add processing step: routing successful
             packet.add_processing_step(
                 step_name="service_routing",
@@ -558,13 +467,13 @@ class EnhancedMCPServer:
                 status="SUCCESS",
                 details={"target_service": packet.tool_type}
             )
-            
+
             # TRIPWIRE 3: Action Support Check
             action_support_result = self.service_tripwires.validate_action_support(packet)
             if not action_support_result.is_valid:
                 packet.status = PacketStatus.ERROR
                 packet.error_details = action_support_result.validation_errors[0]
-                
+
                 # Add processing step: action validation failed
                 packet.add_processing_step(
                     step_name="action_validation",
@@ -572,13 +481,13 @@ class EnhancedMCPServer:
                     status="FAILED",
                     error_details=packet.error_details
                 )
-                
+
                 return {
                     "success": False,
                     "error": "Action not supported",
                     "packet": packet.to_dict()
                 }
-            
+
             # Add processing step: action validation successful
             packet.add_processing_step(
                 step_name="action_validation",
@@ -586,13 +495,13 @@ class EnhancedMCPServer:
                 status="SUCCESS",
                 details={"supported_action": packet.action}
             )
-            
+
             # TRIPWIRE 4: Item Type Support Check
             item_type_support_result = self.service_tripwires.validate_item_type_support(packet)
             if not item_type_support_result.is_valid:
                 packet.status = PacketStatus.ERROR
                 packet.error_details = item_type_support_result.validation_errors[0]
-                
+
                 # Add processing step: item type validation failed
                 packet.add_processing_step(
                     step_name="item_type_validation",
@@ -600,13 +509,13 @@ class EnhancedMCPServer:
                     status="FAILED",
                     error_details=packet.error_details
                 )
-                
+
                 return {
                     "success": False,
                     "error": "Item type not supported",
                     "packet": packet.to_dict()
                 }
-            
+
             # Add processing step: item type validation successful
             packet.add_processing_step(
                 step_name="item_type_validation",
@@ -614,19 +523,19 @@ class EnhancedMCPServer:
                 status="SUCCESS",
                 details={"supported_item_type": packet.item_type}
             )
-            
+
             # Get appropriate service handler
             service_handler = self.service_handlers.get(packet.tool_type)
-            
+
             # Load relevant tools for this operation
             await self._load_service_tools_if_needed(packet.tool_type)
-            
+
             # TRIPWIRE 5: Execute the packet
             try:
                 execution_start = time.time()
-                result = await service_handler.execute(packet.action, packet.payload)
+                result = await service_handler.execute(packet.action, packet.payload, packet.item_type)
                 execution_duration = (time.time() - execution_start) * 1000
-                
+
                 # Add processing step: execution successful
                 packet.add_processing_step(
                     step_name="packet_execution",
@@ -635,10 +544,10 @@ class EnhancedMCPServer:
                     duration_ms=execution_duration,
                     details={"result_summary": str(result)[:100] + "..." if len(str(result)) > 100 else str(result)}
                 )
-                
+
                 packet.status = PacketStatus.SUCCESS
                 packet.validation_results = validation_results
-                
+
                 # Track execution
                 execution_time = time.time() - start_time
                 self.execution_history[packet.packet_id] = {
@@ -647,14 +556,14 @@ class EnhancedMCPServer:
                     "execution_time": execution_time,
                     "timestamp": datetime.utcnow().isoformat()
                 }
-                
+
                 return {
                     "success": True,
                     "data": result,
                     "packet": packet.to_dict(),
                     "execution_duration_ms": execution_duration
                 }
-                
+
             except Exception as e:
                 # TRIPWIRE 5: Execution Error Handling
                 packet.status = PacketStatus.ERROR
@@ -671,7 +580,7 @@ class EnhancedMCPServer:
                         "Review service logs"
                     ]
                 )
-                
+
                 # Add processing step: execution failed
                 packet.add_processing_step(
                     step_name="packet_execution",
@@ -679,14 +588,14 @@ class EnhancedMCPServer:
                     status="FAILED",
                     error_details=packet.error_details
                 )
-                
+
                 return {
                     "success": False,
                     "error": "Service execution failed",
                     "packet": packet.to_dict(),
                     "validation_results": validation_results.to_dict()
                 }
-            
+
         except Exception as e:
             # Critical error in packet processing
             execution_time = time.time() - start_time
@@ -696,7 +605,7 @@ class EnhancedMCPServer:
                 "execution_time": execution_time,
                 "packet_id": packet.packet_id if 'packet' in locals() else None
             }
-    
+
     async def _load_service_tools_if_needed(self, service_name: str):
         """Load tools for a service if they're not already loaded"""
         # This is where you'd implement intelligent tool loading
@@ -708,15 +617,15 @@ class EnhancedMCPServer:
                 f"{service_name}_search",
                 f"{service_name}_read"
             ]
-            
+
             for tool_name in common_tools:
                 if tool_name in self.tool_manager.tool_registry:
                     self.tool_manager.load_tool(tool_name)
-    
+
     async def _load_tool(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Dynamically load a specific tool"""
         tool_name = arguments["tool_name"]
-        
+
         try:
             tool = self.tool_manager.load_tool(tool_name)
             if tool:
@@ -736,11 +645,11 @@ class EnhancedMCPServer:
                 "success": False,
                 "error": f"Error loading tool {tool_name}: {str(e)}"
             }
-    
+
     async def _unload_tool(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Unload a specific tool"""
         tool_name = arguments["tool_name"]
-        
+
         try:
             success = self.tool_manager.unload_tool(tool_name)
             if success:
@@ -759,11 +668,11 @@ class EnhancedMCPServer:
                 "success": False,
                 "error": f"Error unloading tool {tool_name}: {str(e)}"
             }
-    
+
     async def _get_tool_status(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Get status of a specific tool"""
         tool_name = arguments["tool_name"]
-        
+
         try:
             status = self.tool_manager.get_tool_status(tool_name)
             return {
@@ -775,7 +684,7 @@ class EnhancedMCPServer:
                 "success": False,
                 "error": f"Error getting tool status: {str(e)}"
             }
-    
+
     async def _get_performance_metrics(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Get performance metrics and cache statistics"""
         try:
@@ -789,7 +698,7 @@ class EnhancedMCPServer:
                 "success": False,
                 "error": f"Error getting performance metrics: {str(e)}"
             }
-    
+
     async def _optimize_cache(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Optimize the tool cache"""
         try:
@@ -803,11 +712,11 @@ class EnhancedMCPServer:
                 "success": False,
                 "error": f"Error optimizing cache: {str(e)}"
             }
-    
+
     async def _set_cache_policy(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Change the cache eviction policy"""
         policy = arguments["policy"]
-        
+
         try:
             self.tool_manager.set_cache_policy(policy)
             return {
@@ -820,11 +729,11 @@ class EnhancedMCPServer:
                 "success": False,
                 "error": f"Error changing cache policy: {str(e)}"
             }
-    
+
     async def _set_max_tools(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Change the maximum number of tools"""
         max_tools = arguments["max_tools"]
-        
+
         try:
             self.tool_manager.set_max_tools(max_tools)
             return {
@@ -837,12 +746,12 @@ class EnhancedMCPServer:
                 "success": False,
                 "error": f"Error changing max tools: {str(e)}"
             }
-    
+
     # ... existing methods from the original server ...
     async def _list_services(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """List all available services and their capabilities"""
         include_schemas = arguments.get("include_schemas", False)
-        
+
         services = {}
         for service_name, handler in self.service_handlers.items():
             service_info = {
@@ -850,59 +759,59 @@ class EnhancedMCPServer:
                 "supported_actions": handler.supported_actions,
                 "supported_item_types": handler.supported_item_types
             }
-            
+
             if include_schemas:
                 service_info["schema"] = await self._get_service_schema_internal(service_name)
-            
+
             services[service_name] = service_info
-        
+
         return {
             "success": True,
             "services": services,
             "total_services": len(services)
         }
-    
+
     async def _get_service_schema(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Get detailed schema for a specific service"""
         service_name = arguments["service_name"]
-        
+
         if service_name not in self.service_handlers:
             return {
                 "success": False,
                 "error": f"Unknown service: {service_name}"
             }
-        
+
         schema = await self._get_service_schema_internal(service_name)
-        
+
         return {
             "success": True,
             "service": service_name,
             "schema": schema
         }
-    
+
     async def _get_service_schema_internal(self, service_name: str) -> Dict[str, Any]:
         """Internal method to get service schema"""
         # ... existing schema logic ...
         return {}
-    
+
     async def _batch_execute(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute multiple packets in a single request"""
         # ... existing batch execution logic ...
         return {"success": True, "message": "Batch execution placeholder"}
-    
+
     async def _get_packet_status(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Check the status of a previously submitted packet"""
         # ... existing status logic ...
         return {"success": True, "message": "Status check placeholder"}
-    
+
     def list_tools(self) -> List[Dict[str, Any]]:
         """List all available tools"""
         return list(self.tools.values())
-    
+
     def list_resources(self) -> List[Dict[str, Any]]:
         """List all available resources"""
         return list(self.resources.values())
-    
+
     def get_resource(self, uri: str) -> Optional[Dict[str, Any]]:
         """Get a specific resource"""
         if uri == "mcp://tool-cache":
@@ -920,37 +829,37 @@ class EnhancedMCPServer:
 async def main():
     """Main entry point for testing"""
     server = EnhancedMCPServer(cache_policy="lfu", max_tools=20)
-    
+
     print("🚀 Enhanced MCP Server with Dynamic Tool Management")
     print("=" * 60)
     print(f"📚 Available tools: {len(server.tools)}")
     print(f"🔗 Available resources: {len(server.resources)}")
     print(f"⚙️  Cache policy: {server.tool_manager.cache_policy.upper()}")
     print(f"📊 Tool limit: {server.tool_manager.max_tools}")
-    
+
     # Test dynamic tool loading
     print("\n🧪 Testing Dynamic Tool Management:")
-    
+
     # Test 1: Load a tool
     print("\n1️⃣ Loading Todoist task creator...")
     result = await server._load_tool({"tool_name": "create_todoist_task"})
     print(f"   Result: {result}")
-    
+
     # Test 2: Get tool status
     print("\n2️⃣ Getting tool status...")
     status = await server._get_tool_status({"tool_name": "create_todoist_task"})
     print(f"   Status: {status}")
-    
+
     # Test 3: Get performance metrics
     print("\n3️⃣ Getting performance metrics...")
     metrics = await server._get_performance_metrics({})
     print(f"   Cache size: {metrics['metrics']['cache_stats']['current_size']}/{metrics['metrics']['cache_stats']['capacity']}")
-    
+
     # Test 4: Change cache policy
     print("\n4️⃣ Changing cache policy to LRU...")
     policy_result = await server._set_cache_policy({"policy": "lru"})
     print(f"   Result: {policy_result}")
-    
+
     print("\n✅ Enhanced MCP Server test completed!")
 
 

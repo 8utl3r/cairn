@@ -1,0 +1,66 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9, 3.10, 3.11]
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r mcp_packet_server/requirements.txt
+    
+    - name: Run linting (ruff)
+      run: |
+        cd mcp_packet_server
+        ruff check . --output-format=github
+    
+    - name: Run type checking (mypy)
+      run: |
+        cd mcp_packet_server
+        mypy . --ignore-missing-imports --explicit-package-bases
+    
+    - name: Run live integration tests (if credentials available)
+      env:
+        TODOIST_API_TOKEN: ${{ secrets.TODOIST_API_TOKEN }}
+        DEEPPCB_API_KEY: ${{ secrets.DEEPPCB_API_KEY }}
+        GOOGLE_CREDENTIALS_FILE: ${{ secrets.GOOGLE_CREDENTIALS_FILE }}
+      run: |
+        cd mcp_packet_server
+        python test_live_services.py
+      continue-on-error: true  # Tests may fail without real credentials
+    
+    - name: Run basic functionality tests
+      run: |
+        cd mcp_packet_server
+        python -c "
+        from enhanced_server import EnhancedMCPServer
+        server = EnhancedMCPServer()
+        print(f'✅ Server initialized with {len(server.service_handlers)} services')
+        print(f'✅ Dynamic tool registry: {len(server.tool_manager.list_registered_tools())} tools')
+        "
+

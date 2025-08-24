@@ -3,67 +3,65 @@ MCP Packet Validation Tripwires
 Comprehensive validation system for catching formatting and input errors
 """
 
-import time
-from typing import Dict, Any, List
-from packet import MCPPacket, ValidationResults, ErrorDetails, ProcessingStep
+from typing import Any, Dict
+
+from packet import ErrorDetails, MCPPacket, ValidationResults
 
 
 class PacketValidationTripwires:
-    """Tripwire system for catching formatting and input errors"""
-    
-    def __init__(self):
-        self.tripwires = {
-            'required_fields': self._check_required_fields,
-            'field_types': self._check_field_types,
-            'enum_values': self._check_enum_values,
-            'payload_structure': self._check_payload_structure,
-            'checksum_validation': self._check_checksum,
-            'timestamp_format': self._check_timestamp_format,
-            'uuid_format': self._check_uuid_format
-        }
-    
+    """Comprehensive packet validation using multiple tripwires"""
+
+    def __init__(self, service_handlers: Dict[str, Any] = None):
+        """Initialize with optional service handlers for dynamic validation"""
+        self.service_handlers = service_handlers or {}
+
     def validate_packet(self, packet: MCPPacket) -> ValidationResults:
-        """Run all tripwires and collect results"""
-        errors = []
-        warnings = []
-        passed = []
-        
-        for tripwire_name, tripwire_func in self.tripwires.items():
-            try:
-                result = tripwire_func(packet)
-                if result.is_valid:
-                    passed.append(tripwire_name)
-                else:
-                    # All validation errors are treated as errors (not warnings)
-                    errors.extend(result.validation_errors)
-                    warnings.extend(result.validation_warnings)
-            except Exception as e:
-                # Tripwire itself failed - critical error
-                errors.append(ErrorDetails(
-                    error_type="TRIPWIRE_FAILURE",
-                    error_code="TRIPWIRE_CRASH",
-                    error_message=f"Tripwire {tripwire_name} crashed: {str(e)}",
-                    error_location="validation_system",
-                    field_path=["validation"],
-                    severity="ERROR"
-                ))
-        
+        """Run all validation tripwires on the packet"""
+        all_results = []
+
+        # TRIPWIRE 1: Basic field presence and types
+        type_results = self._check_field_types(packet)
+        all_results.append(type_results)
+
+        # TRIPWIRE 2: Enum value validation (using dynamic service registry)
+        enum_results = self._check_enum_values(packet)
+        all_results.append(enum_results)
+
+        # TRIPWIRE 3: Payload structure validation
+        payload_results = self._check_payload_structure(packet)
+        all_results.append(payload_results)
+
+        # TRIPWIRE 4: Checksum validation
+        checksum_results = self._check_checksum(packet)
+        all_results.append(checksum_results)
+
+        # Aggregate all results
+        is_valid = all(result.is_valid for result in all_results)
+        all_errors = []
+        all_warnings = []
+        all_passed = []
+
+        for result in all_results:
+            all_errors.extend(result.validation_errors)
+            all_warnings.extend(result.validation_warnings)
+            all_passed.extend(result.validation_passed)
+
         return ValidationResults(
-            is_valid=len(errors) == 0,
-            validation_errors=errors,
-            validation_warnings=warnings,
-            validation_passed=passed
+            is_valid=is_valid,
+            validation_errors=all_errors,
+            validation_warnings=all_warnings,
+            validation_passed=all_passed
         )
-    
+
     def _check_required_fields(self, packet: MCPPacket) -> ValidationResults:
         """Tripwire: Check all required fields are present"""
         required_fields = ['tool_type', 'action', 'item_type', 'payload']
         missing_fields = []
-        
+
         for field in required_fields:
             if not hasattr(packet, field) or getattr(packet, field) is None:
                 missing_fields.append(field)
-        
+
         if missing_fields:
             return ValidationResults(
                 is_valid=False,
@@ -80,9 +78,9 @@ class PacketValidationTripwires:
                     ]
                 )]
             )
-        
+
         return ValidationResults(is_valid=True, validation_passed=["required_fields"])
-    
+
     def _check_field_types(self, packet: MCPPacket) -> ValidationResults:
         """Tripwire: Check field data types"""
         type_checks = [
@@ -92,7 +90,7 @@ class PacketValidationTripwires:
             ('payload', dict),
             ('priority', str)
         ]
-        
+
         type_errors = []
         for field_name, expected_type in type_checks:
             if hasattr(packet, field_name):
@@ -110,20 +108,21 @@ class PacketValidationTripwires:
                             f"Change {field_name} to {expected_type.__name__} type"
                         ]
                     ))
-        
+
         if type_errors:
             return ValidationResults(is_valid=False, validation_errors=type_errors)
-        
+
         return ValidationResults(is_valid=True, validation_passed=["field_types"])
-    
+
     def _check_enum_values(self, packet: MCPPacket) -> ValidationResults:
-        """Tripwire: Check enum values are valid"""
-        valid_tool_types = ['todoist', 'gcal', 'gmail']
+        """Tripwire: Check enum values are valid using dynamic service registry"""
+        # Get valid tool types from service handlers
+        valid_tool_types = list(self.service_handlers.keys()) if self.service_handlers else ['todoist', 'gcal', 'gmail', 'deep_pcb']
         valid_actions = ['create', 'read', 'update', 'delete', 'list', 'search']
         valid_priorities = ['low', 'normal', 'high', 'critical']
-        
+
         enum_errors = []
-        
+
         # Check tool_type
         if hasattr(packet, 'tool_type') and packet.tool_type:
             if packet.tool_type not in valid_tool_types:
@@ -139,7 +138,7 @@ class PacketValidationTripwires:
                         f"Use one of the valid tool types: {', '.join(valid_tool_types)}"
                     ]
                 ))
-        
+
         # Check action
         if hasattr(packet, 'action') and packet.action:
             if packet.action not in valid_actions:
@@ -155,7 +154,7 @@ class PacketValidationTripwires:
                         f"Use one of the valid actions: {', '.join(valid_actions)}"
                     ]
                 ))
-        
+
         # Check priority
         if hasattr(packet, 'priority') and packet.priority:
             if packet.priority not in valid_priorities:
@@ -171,12 +170,12 @@ class PacketValidationTripwires:
                         f"Use one of the valid priorities: {', '.join(valid_priorities)}"
                     ]
                 ))
-        
+
         if enum_errors:
             return ValidationResults(is_valid=False, validation_errors=enum_errors)
-        
+
         return ValidationResults(is_valid=True, validation_passed=["enum_values"])
-    
+
     def _check_payload_structure(self, packet: MCPPacket) -> ValidationResults:
         """Tripwire: Check payload structure and content"""
         if not hasattr(packet, 'payload') or not packet.payload:
@@ -196,7 +195,7 @@ class PacketValidationTripwires:
                     ]
                 )]
             )
-        
+
         if not isinstance(packet.payload, dict):
             return ValidationResults(
                 is_valid=False,
@@ -214,9 +213,9 @@ class PacketValidationTripwires:
                     ]
                 )]
             )
-        
+
         return ValidationResults(is_valid=True, validation_passed=["payload_structure"])
-    
+
     def _check_checksum(self, packet: MCPPacket) -> ValidationResults:
         """Tripwire: Validate packet checksum"""
         if not hasattr(packet, 'checksum') or not packet.checksum:
@@ -236,7 +235,7 @@ class PacketValidationTripwires:
                     ]
                 )]
             )
-        
+
         # Verify checksum format (8 characters)
         if len(packet.checksum) != 8:
             return ValidationResults(
@@ -255,9 +254,9 @@ class PacketValidationTripwires:
                     ]
                 )]
             )
-        
+
         return ValidationResults(is_valid=True, validation_passed=["checksum_validation"])
-    
+
     def _check_timestamp_format(self, packet: MCPPacket) -> ValidationResults:
         """Tripwire: Validate timestamp format"""
         if not hasattr(packet, 'timestamp') or not packet.timestamp:
@@ -277,7 +276,7 @@ class PacketValidationTripwires:
                     ]
                 )]
             )
-        
+
         # Basic ISO format validation
         try:
             from datetime import datetime
@@ -299,9 +298,9 @@ class PacketValidationTripwires:
                     ]
                 )]
             )
-        
+
         return ValidationResults(is_valid=True, validation_passed=["timestamp_format"])
-    
+
     def _check_uuid_format(self, packet: MCPPacket) -> ValidationResults:
         """Tripwire: Validate UUID format"""
         if not hasattr(packet, 'packet_id') or not packet.packet_id:
@@ -321,7 +320,7 @@ class PacketValidationTripwires:
                     ]
                 )]
             )
-        
+
         # Basic UUID format validation
         import re
         uuid_pattern = r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
@@ -342,20 +341,20 @@ class PacketValidationTripwires:
                     ]
                 )]
             )
-        
+
         return ValidationResults(is_valid=True, validation_passed=["uuid_format"])
 
 
 class ServiceValidationTripwires:
     """Additional tripwires for service-specific validation"""
-    
+
     def __init__(self):
         self.service_handlers = {}
-    
+
     def register_service_handler(self, service_name: str, handler):
         """Register a service handler for validation"""
         self.service_handlers[service_name] = handler
-    
+
     def validate_service_availability(self, packet: MCPPacket) -> ValidationResults:
         """Tripwire: Check if target service is available"""
         if packet.tool_type not in self.service_handlers:
@@ -374,14 +373,14 @@ class ServiceValidationTripwires:
                     ]
                 )]
             )
-        
+
         return ValidationResults(is_valid=True, validation_passed=["service_availability"])
-    
+
     def validate_action_support(self, packet: MCPPacket) -> ValidationResults:
         """Tripwire: Check if action is supported by the service"""
         if packet.tool_type not in self.service_handlers:
             return ValidationResults(is_valid=True, validation_passed=["action_support"])  # Skip if service not available
-        
+
         handler = self.service_handlers[packet.tool_type]
         if hasattr(handler, 'supported_actions') and packet.action not in handler.supported_actions:
             return ValidationResults(
@@ -399,14 +398,14 @@ class ServiceValidationTripwires:
                     ]
                 )]
             )
-        
+
         return ValidationResults(is_valid=True, validation_passed=["action_support"])
-    
+
     def validate_item_type_support(self, packet: MCPPacket) -> ValidationResults:
         """Tripwire: Check if item type is supported by the service"""
         if packet.tool_type not in self.service_handlers:
             return ValidationResults(is_valid=True, validation_passed=["item_type_support"])  # Skip if service not available
-        
+
         handler = self.service_handlers[packet.tool_type]
         if hasattr(handler, 'supported_item_types') and packet.item_type not in handler.supported_item_types:
             return ValidationResults(
@@ -424,7 +423,7 @@ class ServiceValidationTripwires:
                     ]
                 )]
             )
-        
+
         return ValidationResults(is_valid=True, validation_passed=["item_type_support"])
 
 
@@ -432,7 +431,7 @@ class ServiceValidationTripwires:
 if __name__ == "__main__":
     # Test the tripwire system
     from packet import MCPPacket
-    
+
     # Create a test packet
     test_packet = MCPPacket(
         tool_type="todoist",
@@ -440,17 +439,17 @@ if __name__ == "__main__":
         item_type="task",
         payload={"content": "Test task"}
     )
-    
+
     # Run validation
     tripwires = PacketValidationTripwires()
     results = tripwires.validate_packet(test_packet)
-    
-    print(f"Validation Results:")
+
+    print("Validation Results:")
     print(f"Valid: {results.is_valid}")
     print(f"Errors: {len(results.validation_errors)}")
     print(f"Warnings: {len(results.validation_warnings)}")
     print(f"Passed: {len(results.validation_passed)}")
-    
+
     if results.validation_errors:
         print("\nValidation Errors:")
         for error in results.validation_errors:

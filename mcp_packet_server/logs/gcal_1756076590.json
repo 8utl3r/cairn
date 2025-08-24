@@ -1,0 +1,152 @@
+{
+  "create": {
+    "success": false,
+    "error": "Service execution failed",
+    "packet": {
+      "tool_type": "gcal",
+      "action": "create",
+      "item_type": "event",
+      "payload": {
+        "summary": "MCP Live Test Event",
+        "start": {
+          "dateTime": "2030-01-01T09:00:00Z"
+        },
+        "end": {
+          "dateTime": "2030-01-01T10:00:00Z"
+        }
+      },
+      "packet_id": "d26798c6-cd1c-4e35-bc8b-4d066634ed6f",
+      "timestamp": "2025-08-24T23:03:10.814586",
+      "priority": "normal",
+      "user_id": null,
+      "session_id": null,
+      "status": "error",
+      "error_details": {
+        "error_type": "EXECUTION_ERROR",
+        "error_code": "SERVICE_EXECUTION_FAILED",
+        "error_message": "Service execution failed: 'NoneType' object has no attribute 'replace'",
+        "error_location": "service_execution",
+        "field_path": [
+          "execution"
+        ],
+        "expected_format": null,
+        "actual_value": "Exception: AttributeError: 'NoneType' object has no attribute 'replace'",
+        "suggestions": [
+          "Check service connectivity",
+          "Verify payload parameters",
+          "Review service logs"
+        ],
+        "severity": "ERROR"
+      },
+      "validation_results": null,
+      "processing_log": [
+        {
+          "step": "packet_received",
+          "type": "VALIDATION",
+          "timestamp": "2025-08-24T23:03:10.814595",
+          "status": "SUCCESS",
+          "duration_ms": null,
+          "details": null,
+          "error_details": null
+        },
+        {
+          "step": "format_validation",
+          "type": "VALIDATION",
+          "timestamp": "2025-08-24T23:03:10.814608",
+          "status": "SUCCESS",
+          "duration_ms": 0.010967254638671875,
+          "details": {
+            "validation_results": {
+              "is_valid": true,
+              "validation_errors": [],
+              "validation_warnings": [],
+              "validation_passed": [
+                "field_types",
+                "enum_values",
+                "payload_structure",
+                "checksum_validation"
+              ],
+              "validation_timestamp": "2025-08-24T23:03:10.814606"
+            }
+          },
+          "error_details": null
+        },
+        {
+          "step": "service_routing",
+          "type": "ROUTING",
+          "timestamp": "2025-08-24T23:03:10.814610",
+          "status": "SUCCESS",
+          "duration_ms": null,
+          "details": {
+            "target_service": "gcal"
+          },
+          "error_details": null
+        },
+        {
+          "step": "action_validation",
+          "type": "VALIDATION",
+          "timestamp": "2025-08-24T23:03:10.814613",
+          "status": "SUCCESS",
+          "duration_ms": null,
+          "details": {
+            "supported_action": "create"
+          },
+          "error_details": null
+        },
+        {
+          "step": "item_type_validation",
+          "type": "VALIDATION",
+          "timestamp": "2025-08-24T23:03:10.814615",
+          "status": "SUCCESS",
+          "duration_ms": null,
+          "details": {
+            "supported_item_type": "event"
+          },
+          "error_details": null
+        },
+        {
+          "step": "packet_execution",
+          "type": "EXECUTION",
+          "timestamp": "2025-08-24T23:03:10.814626",
+          "status": "FAILED",
+          "duration_ms": null,
+          "details": null,
+          "error_details": {
+            "error_type": "EXECUTION_ERROR",
+            "error_code": "SERVICE_EXECUTION_FAILED",
+            "error_message": "Service execution failed: 'NoneType' object has no attribute 'replace'",
+            "error_location": "service_execution",
+            "field_path": [
+              "execution"
+            ],
+            "expected_format": null,
+            "actual_value": "Exception: AttributeError: 'NoneType' object has no attribute 'replace'",
+            "suggestions": [
+              "Check service connectivity",
+              "Verify payload parameters",
+              "Review service logs"
+            ],
+            "severity": "ERROR"
+          }
+        }
+      ],
+      "checksum": "04019588",
+      "version": "1.0"
+    },
+    "validation_results": {
+      "is_valid": true,
+      "validation_errors": [],
+      "validation_warnings": [],
+      "validation_passed": [
+        "field_types",
+        "enum_values",
+        "payload_structure",
+        "checksum_validation"
+      ],
+      "validation_timestamp": "2025-08-24T23:03:10.814606"
+    }
+  },
+  "read": null,
+  "update": null,
+  "delete": null
+}

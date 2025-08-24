@@ -5,11 +5,10 @@ Enhanced with comprehensive error handling and validation
 
 import json
 import uuid
-import time
+from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Any, Dict, Optional, Union, List
-from dataclasses import dataclass, asdict
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 
 class PacketStatus(str, Enum):
@@ -41,11 +40,11 @@ class ErrorDetails:
     actual_value: Optional[Any] = None  # What was received
     suggestions: List[str] = None  # How to fix it
     severity: str = "ERROR"  # ERROR, WARNING, INFO
-    
+
     def __post_init__(self):
         if self.suggestions is None:
             self.suggestions = []
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert error details to dictionary"""
         return {
@@ -69,7 +68,7 @@ class ValidationResults:
     validation_warnings: List[ErrorDetails] = None
     validation_passed: List[str] = None  # Fields that passed validation
     validation_timestamp: str = None
-    
+
     def __post_init__(self):
         if self.validation_errors is None:
             self.validation_errors = []
@@ -79,7 +78,7 @@ class ValidationResults:
             self.validation_passed = []
         if self.validation_timestamp is None:
             self.validation_timestamp = datetime.utcnow().isoformat()
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert validation results to dictionary"""
         return {
@@ -101,11 +100,11 @@ class ProcessingStep:
     details: Optional[Dict[str, Any]] = None
     duration_ms: Optional[float] = None
     error_details: Optional[ErrorDetails] = None
-    
+
     def __post_init__(self):
         if self.timestamp is None:
             self.timestamp = datetime.utcnow().isoformat()
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert processing step to dictionary"""
         return {
@@ -122,30 +121,30 @@ class ProcessingStep:
 @dataclass
 class MCPPacket:
     """Enhanced MCP packet with comprehensive error handling and processing tracking"""
-    
+
     # Core packet data
-    tool_type: str                    # "todoist", "gcal", "gmail"
+    tool_type: str                    # Service type (dynamically discovered from handlers)
     action: str                       # "create", "read", "update", "delete", "list", "search"
     item_type: str                    # "task", "event", "email", "project", "label"
     payload: Dict[str, Any]           # Tool-specific parameters
-    
+
     # Enhanced metadata
     packet_id: str = None             # Unique identifier
     timestamp: str = None             # ISO timestamp
     priority: PacketPriority = PacketPriority.NORMAL
     user_id: Optional[str] = None     # User context
     session_id: Optional[str] = None  # Session context
-    
+
     # Status and error tracking
     status: PacketStatus = PacketStatus.PENDING
     error_details: Optional[ErrorDetails] = None
     validation_results: Optional[ValidationResults] = None
-    
+
     # Debugging and tracing
     processing_log: List[ProcessingStep] = None
     checksum: Optional[str] = None
     version: str = "1.0"
-    
+
     def __post_init__(self):
         """Initialize default values after dataclass creation"""
         if self.packet_id is None:
@@ -156,14 +155,14 @@ class MCPPacket:
             self.processing_log = []
         if self.checksum is None:
             self.checksum = self._calculate_checksum()
-    
+
     def _calculate_checksum(self) -> str:
         """Calculate a simple checksum for packet validation"""
         content = f"{self.tool_type}:{self.action}:{self.item_type}:{json.dumps(self.payload, sort_keys=True)}"
         return str(hash(content))[-8:]  # Simple hash-based checksum
-    
-    def add_processing_step(self, step_name: str, step_type: str, status: str, 
-                           details: Optional[Dict[str, Any]] = None, 
+
+    def add_processing_step(self, step_name: str, step_type: str, status: str,
+                           details: Optional[Dict[str, Any]] = None,
                            duration_ms: Optional[float] = None,
                            error_details: Optional[ErrorDetails] = None):
         """Add a processing step to the packet log"""
@@ -177,7 +176,7 @@ class MCPPacket:
             error_details=error_details
         )
         self.processing_log.append(step)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert packet to dictionary for serialization"""
         packet_dict = asdict(self)
@@ -191,11 +190,11 @@ class MCPPacket:
         if self.validation_results:
             packet_dict['validation_results'] = self.validation_results.to_dict()
         return packet_dict
-    
+
     def to_json(self) -> str:
         """Convert packet to JSON string"""
         return json.dumps(self.to_dict(), indent=2)
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'MCPPacket':
         """Create packet from dictionary"""
@@ -206,40 +205,60 @@ class MCPPacket:
                 step = ProcessingStep(**step_data)
                 processing_log.append(step)
             data['processing_log'] = processing_log
-        
+
         # Handle error details reconstruction
         if 'error_details' in data and data['error_details']:
             data['error_details'] = ErrorDetails(**data['error_details'])
-        
+
         # Handle validation results reconstruction
         if 'validation_results' in data and data['validation_results']:
             data['validation_results'] = ValidationResults(**data['validation_results'])
-        
+
         return cls(**data)
-    
+
     @classmethod
     def from_json(cls, json_str: str) -> 'MCPPacket':
         """Create packet from JSON string"""
         data = json.loads(json_str)
         return cls.from_dict(data)
-    
+
     def validate(self) -> bool:
         """Basic packet structure validation"""
         required_fields = ['tool_type', 'action', 'item_type']
-        
+
         for field in required_fields:
             if not getattr(self, field):
                 return False
-        
+
         return True
-    
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert packet to dictionary for JSON serialization"""
+        return {
+            'tool_type': self.tool_type,
+            'action': self.action,
+            'item_type': self.item_type,
+            'payload': self.payload,
+            'packet_id': self.packet_id,
+            'timestamp': self.timestamp,
+            'priority': self.priority.value if hasattr(self.priority, 'value') else str(self.priority),
+            'user_id': self.user_id,
+            'session_id': self.session_id,
+            'status': self.status.value if hasattr(self.status, 'value') else str(self.status),
+            'error_details': self.error_details.to_dict() if self.error_details else None,
+            'validation_results': self.validation_results.to_dict() if self.validation_results else None,
+            'processing_log': [step.to_dict() for step in self.processing_log] if self.processing_log else [],
+            'checksum': self.checksum,
+            'version': self.version
+        }
+
     def get_routing_key(self) -> str:
         """Get routing key for packet processing"""
         return f"{self.tool_type}:{self.action}:{self.item_type}"
-    
+
     def __str__(self) -> str:
         return f"MCPPacket({self.tool_type}:{self.action}:{self.item_type})"
-    
+
     def __repr__(self) -> str:
         return self.__str__()
 
@@ -250,23 +269,23 @@ class PacketResponse:
     success: bool
     data: Optional[Any] = None
     error: Optional[str] = None
-    
+
     # Enhanced debugging information
     packet: Optional[MCPPacket] = None  # Full packet with processing log
     validation_results: Optional[ValidationResults] = None
     execution_duration_ms: Optional[float] = None
-    
+
     # Server metadata
     server_timestamp: str = None
     server_version: str = "1.0"
     server_instance_id: str = None
-    
+
     def __post_init__(self):
         if self.server_timestamp is None:
             self.server_timestamp = datetime.utcnow().isoformat()
         if self.server_instance_id is None:
             self.server_instance_id = str(uuid.uuid4())
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary with all debugging information"""
         response = {
@@ -277,14 +296,14 @@ class PacketResponse:
                 "instance_id": self.server_instance_id
             }
         }
-        
+
         if self.success:
             response["data"] = self.data
             if self.execution_duration_ms:
                 response["execution_duration_ms"] = self.execution_duration_ms
         else:
             response["error"] = self.error
-        
+
         # Always include debugging information
         if self.packet:
             response["packet"] = {
@@ -305,7 +324,7 @@ class PacketResponse:
                 "error_details": self.packet.error_details.to_dict() if self.packet.error_details else None,
                 "validation_results": self.packet.validation_results.to_dict() if self.packet.validation_results else None
             }
-        
+
         if self.validation_results:
             response["validation_results"] = {
                 "is_valid": self.validation_results.is_valid,
@@ -314,9 +333,9 @@ class PacketResponse:
                 "passed": self.validation_results.validation_passed,
                 "timestamp": self.validation_results.validation_timestamp
             }
-        
+
         return response
-    
+
     def to_json(self) -> str:
         """Convert response to JSON string"""
         return json.dumps(self.to_dict(), indent=2)
@@ -325,7 +344,7 @@ class PacketResponse:
 # Example packet creation
 def create_example_packets():
     """Create example packets for testing"""
-    
+
     # Todoist task creation
     todoist_packet = MCPPacket(
         tool_type="todoist",
@@ -337,7 +356,7 @@ def create_example_packets():
             "priority": 1
         }
     )
-    
+
     # Google Calendar event creation
     gcal_packet = MCPPacket(
         tool_type="gcal",
@@ -350,7 +369,7 @@ def create_example_packets():
             "attendees": ["team@company.com"]
         }
     )
-    
+
     # Gmail email search
     gmail_packet = MCPPacket(
         tool_type="gmail",
@@ -361,20 +380,20 @@ def create_example_packets():
             "max_results": 10
         }
     )
-    
+
     return [todoist_packet, gcal_packet, gmail_packet]
 
 
 if __name__ == "__main__":
     # Test packet creation and validation
     packets = create_example_packets()
-    
+
     for packet in packets:
         print(f"\nPacket: {packet}")
         print(f"Valid: {packet.validate()}")
         print(f"Routing Key: {packet.get_routing_key()}")
         print(f"JSON: {packet.to_json()[:200]}...")
-        
+
         # Test processing step addition
         packet.add_processing_step("test_step", "TESTING", "SUCCESS", {"test": "data"})
         print(f"Processing Log: {len(packet.processing_log)} steps")
