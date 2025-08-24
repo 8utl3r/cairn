@@ -27,6 +27,16 @@ coverage.xml
 .env.local
 .env.*.local
 
+# Google API sensitive files
+google_calendar/token.json
+google_calendar/client_secret*.json
+gmail/token.json
+gmail/client_secret*.json
+todoist/token.json
+todoist/client_secret*.json
+**/token.json
+**/client_secret*.json
+
 # IDE files
 .vscode/
 .idea/

@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}API Explorer - Home{% endblock %}
+
+{% block content %}
+<!-- Simple Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="h2 mb-2">API Database</h1>
+        <p class="text-muted">Manage your collection of public APIs</p>
+    </div>
+</div>
+
+<!-- Quick Stats Row -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card text-center">
+            <div class="card-body py-3">
+                <h3 class="mb-1">{{ total_apis }}</h3>
+                <small class="text-muted">Total APIs</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card text-center">
+            <div class="card-body py-3">
+                <h3 class="mb-1">{{ free_apis }}</h3>
+                <small class="text-muted">Free APIs</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card text-center">
+            <div class="card-body py-3">
+                <h3 class="mb-1">{{ all_tags|length if all_tags else 0 }}</h3>
+                <small class="text-muted">Categories</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card text-center">
+            <div class="card-body py-3">
+                <h3 class="mb-1">+</h3>
+                <small class="text-muted">Add New</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search Bar -->
+<div class="row mb-4">
+    <div class="col-lg-6">
+        <form action="{{ url_for('search') }}" method="GET">
+            <div class="input-group">
+                <input type="text" name="q" class="form-control" 
+                       placeholder="Search APIs by name, tag, or use case..." required>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{{ url_for('list_apis') }}" class="btn btn-outline-primary">
+                <i class="fas fa-list me-2"></i>View All APIs
+            </a>
+            <a href="{{ url_for('free_apis') }}" class="btn btn-outline-success">
+                <i class="fas fa-gift me-2"></i>Free APIs
+            </a>
+            <a href="{{ url_for('new_api') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Add New API
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Recent APIs Table -->
+{% if sample_apis %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Recent APIs</h5>
+                <a href="{{ url_for('list_apis') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th>Tags</th>
+                                <th>Pricing</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for api in sample_apis %}
+                            <tr>
+                                <td>
+                                    <strong>{{ api.name }}</strong>
+                                </td>
+                                <td>{{ api.description[:60] }}{% if api.description|length > 60 %}...{% endif %}</td>
+                                <td>
+                                    {% for tag in api.tags[:2] %}
+                                    <span class="badge me-1">{{ tag }}</span>
+                                    {% endfor %}
+                                    {% if api.tags|length > 2 %}
+                                    <span class="badge">+{{ api.tags|length - 2 }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if 'free' in api.pricing.lower() %}
+                                    <span class="badge bg-success">Free</span>
+                                    {% else %}
+                                    <span class="badge bg-warning">Paid</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('api_detail', api_id=api.id) }}" class="btn btn-sm btn-outline-primary">
+                                        View
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

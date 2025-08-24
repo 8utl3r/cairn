@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}All APIs - API Explorer{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="h2 mb-1">All APIs</h1>
+            <p class="text-muted mb-0">{{ apis|length }} APIs in your database</p>
+        </div>
+        <a href="{{ url_for('new_api') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Add API
+        </a>
+    </div>
+</div>
+
+<!-- Simple Filters -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label for="tagFilter" class="form-label">Filter by Tag</label>
+                        <select class="form-select" id="tagFilter" onchange="filterByTag(this.value)">
+                            <option value="">All Tags</option>
+                            {% for tag in all_tags %}
+                            <option value="{{ tag }}" {% if tag == current_tag %}selected{% endif %}>{{ tag }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <label for="nameSearch" class="form-label">Search by Name</label>
+                        <input type="text" class="form-control" id="nameSearch" 
+                               placeholder="API name..." value="{{ current_search }}"
+                               onkeyup="searchByName(this.value)">
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <label for="useCaseFilter" class="form-label">Filter by Use Case</label>
+                        <input type="text" class="form-control" id="useCaseFilter" 
+                               placeholder="Use case..." value="{{ current_use_case }}"
+                               onkeyup="filterByUseCase(this.value)">
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">&nbsp;</label>
+                        <div>
+                            <button class="btn btn-outline-secondary" onclick="clearFilters()">
+                                <i class="fas fa-times me-1"></i>Clear
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- APIs Table -->
+{% if apis %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th>Tags</th>
+                                <th>Base URL</th>
+                                <th>Pricing</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for api in apis %}
+                            <tr>
+                                <td>
+                                    <strong>{{ api.name }}</strong>
+                                </td>
+                                <td>{{ api.description[:80] }}{% if api.description|length > 80 %}...{% endif %}</td>
+                                <td>
+                                    {% for tag in api.tags[:3] %}
+                                    <span class="badge me-1">{{ tag }}</span>
+                                    {% endfor %}
+                                    {% if api.tags|length > 3 %}
+                                    <span class="badge">+{{ api.tags|length - 3 }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <code class="small">{{ api.base_url|truncate(25) }}</code>
+                                </td>
+                                <td>
+                                    {% if 'free' in api.pricing.lower() %}
+                                    <span class="badge bg-success">Free</span>
+                                    {% else %}
+                                    <span class="badge bg-warning">Paid</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" 
+                                                data-bs-toggle="dropdown">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item" href="{{ url_for('api_detail', api_id=api.id) }}">
+                                                <i class="fas fa-eye me-2"></i>View
+                                            </a></li>
+                                            <li><a class="dropdown-item" href="{{ url_for('edit_api', api_id=api.id) }}">
+                                                <i class="fas fa-edit me-2"></i>Edit
+                                            </a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item text-danger" href="#" 
+                                                   onclick="deleteAPI('{{ api.id }}', '{{ api.name }}')">
+                                                <i class="fas fa-trash me-2"></i>Delete
+                                            </a></li>
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="row">
+    <div class="col-12 text-center">
+        <div class="card">
+            <div class="card-body py-5">
+                <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                <h4>No APIs Found</h4>
+                <p class="text-muted">Try adjusting your filters or add your first API.</p>
+                <div class="mt-3">
+                    <button class="btn btn-primary me-2" onclick="clearFilters()">Clear Filters</button>
+                    <a href="{{ url_for('new_api') }}" class="btn btn-outline-primary">Add First API</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong id="apiNameToDelete"></strong>?</p>
+                <p class="text-muted">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Delete API</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function filterByTag(tag) {
+    if (tag) {
+        window.location.href = "{{ url_for('list_apis') }}?tag=" + encodeURIComponent(tag);
+    } else {
+        window.location.href = "{{ url_for('list_apis') }}";
+    }
+}
+
+function searchByName(query) {
+    if (query.trim()) {
+        window.location.href = "{{ url_for('list_apis') }}?search=" + encodeURIComponent(query.trim());
+    }
+}
+
+function filterByUseCase(useCase) {
+    if (useCase.trim()) {
+        window.location.href = "{{ url_for('list_apis') }}?use_case=" + encodeURIComponent(useCase.trim());
+    }
+}
+
+function clearFilters() {
+    window.location.href = "{{ url_for('list_apis') }}";
+}
+
+function deleteAPI(apiId, apiName) {
+    document.getElementById('apiNameToDelete').textContent = apiName;
+    document.getElementById('deleteForm').action = "{{ url_for('delete_api', api_id='') }}" + apiId;
+    
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    deleteModal.show();
+}
+</script>
+{% endblock %}
