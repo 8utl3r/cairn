@@ -121,7 +121,7 @@ async def test_basic_functionality():
 
 
 def test_packet_validation():
-    """Test packet validation logic"""
+    """Test packet validation logic with tripwire system"""
     print("\n🔍 Testing Packet Validation...")
     
     # Test valid packet
@@ -138,12 +138,12 @@ def test_packet_validation():
         print("   ❌ Valid packet validation failed")
         return False
     
-    # Test invalid packet (wrong tool type)
+    # Test invalid packet (missing required field)
     try:
         invalid_packet = MCPPacket(
-            tool_type="invalid_service",
+            tool_type="todoist",
             action="create",
-            item_type="task",
+            # Missing item_type
             payload={"content": "Test task"}
         )
         
@@ -154,6 +154,40 @@ def test_packet_validation():
             return False
     except Exception as e:
         print(f"   ✅ Invalid packet handling working (caught: {e})")
+    
+    # Test tripwire validation system
+    try:
+        from validation_tripwires import PacketValidationTripwires
+        
+        tripwires = PacketValidationTripwires()
+        
+        # Test with valid packet
+        validation_result = tripwires.validate_packet(valid_packet)
+        if validation_result.is_valid:
+            print("   ✅ Tripwire validation working for valid packets")
+        else:
+            print("   ❌ Tripwire validation failed for valid packets")
+            return False
+        
+        # Test with invalid packet (wrong tool type)
+        invalid_tool_packet = MCPPacket(
+            tool_type="invalid_service",
+            action="create",
+            item_type="task",
+            payload={"content": "Test task"}
+        )
+        
+        validation_result = tripwires.validate_packet(invalid_tool_packet)
+        if not validation_result.is_valid:
+            print("   ✅ Tripwire validation correctly caught invalid tool type")
+            print(f"   📝 Validation errors: {len(validation_result.validation_errors)}")
+        else:
+            print("   ❌ Tripwire validation missed invalid tool type")
+            return False
+            
+    except Exception as e:
+        print(f"   ❌ Tripwire validation test failed: {e}")
+        return False
     
     print("   ✅ Packet validation tests passed")
     return True

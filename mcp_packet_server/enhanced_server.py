@@ -1,6 +1,7 @@
 """
 Enhanced MCP Packet Server with Dynamic Tool Management
 Integrates packet-based communication with intelligent tool loading/unloading
+Enhanced with comprehensive tripwire validation and error handling
 """
 
 import asyncio
@@ -9,18 +10,19 @@ import time
 from typing import Any, Dict, List, Optional
 from datetime import datetime
 
-from packet import MCPPacket, PacketResponse, PacketStatus
+from packet import MCPPacket, PacketResponse, PacketStatus, ErrorDetails
 from service_handlers import (
     TodoistServiceHandler, 
     GoogleCalendarServiceHandler, 
     GmailServiceHandler
 )
 from dynamic_tool_manager import DynamicToolManager
+from validation_tripwires import PacketValidationTripwires, ServiceValidationTripwires
 
 
 class EnhancedMCPServer:
     """
-    Enhanced MCP server with dynamic tool management
+    Enhanced MCP server with dynamic tool management and tripwire validation
     
     Features:
     - Packet-based communication (5 core tools)
@@ -29,6 +31,8 @@ class EnhancedMCPServer:
     - Configurable tool limits
     - Memory optimization
     - Performance monitoring
+    - Comprehensive tripwire validation system
+    - Rich error handling and debugging
     """
     
     def __init__(self, cache_policy: str = "lfu", max_tools: int = 80):
@@ -49,6 +53,14 @@ class EnhancedMCPServer:
             'gmail': GmailServiceHandler()
         }
         
+        # Initialize tripwire validation system
+        self.packet_tripwires = PacketValidationTripwires()
+        self.service_tripwires = ServiceValidationTripwires()
+        
+        # Register service handlers with validation tripwires
+        for service_name, handler in self.service_handlers.items():
+            self.service_tripwires.register_service_handler(service_name, handler)
+        
         # Register all 137 individual tools for dynamic loading
         self._register_all_tools()
         
@@ -63,6 +75,7 @@ class EnhancedMCPServer:
         print(f"🚀 Enhanced MCP Server initialized with {cache_policy.upper()} policy")
         print(f"📊 Tool limit: {max_tools}")
         print(f"🔧 Available services: {len(self.service_handlers)}")
+        print(f"🚨 Tripwire validation system: ACTIVE")
     
     def _register_all_tools(self):
         """Register all 137 individual tools for dynamic loading"""
@@ -456,11 +469,11 @@ class EnhancedMCPServer:
             return {"success": False, "error": f"Unknown tool: {name}"}
     
     async def _execute_packet(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute a single MCP packet with dynamic tool loading"""
+        """Execute a single MCP packet with comprehensive tripwire validation"""
         start_time = time.time()
         
         try:
-            # Create packet from arguments
+            # Add processing step: received
             packet = MCPPacket(
                 tool_type=arguments["tool_type"],
                 action=arguments["action"],
@@ -469,51 +482,219 @@ class EnhancedMCPServer:
                 priority=arguments.get("priority", "normal")
             )
             
-            # Validate packet
-            if not packet.validate():
+            packet.add_processing_step(
+                step_name="packet_received",
+                step_type="VALIDATION",
+                status="SUCCESS"
+            )
+            
+            # TRIPWIRE 1: Format and Input Validation
+            validation_start = time.time()
+            validation_results = self.packet_tripwires.validate_packet(packet)
+            validation_duration = (time.time() - validation_start) * 1000
+            
+            # Add processing step: validation
+            packet.add_processing_step(
+                step_name="format_validation",
+                step_type="VALIDATION",
+                status="SUCCESS" if validation_results.is_valid else "FAILED",
+                duration_ms=validation_duration,
+                details={"validation_results": validation_results}
+            )
+            
+            # If validation failed, return detailed error packet
+            if not validation_results.is_valid:
+                packet.status = PacketStatus.ERROR
+                packet.error_details = ErrorDetails(
+                    error_type="VALIDATION_ERROR",
+                    error_code="FORMAT_VALIDATION_FAILED",
+                    error_message="Packet failed format validation",
+                    error_location="packet_validation",
+                    field_path=["validation"],
+                    suggestions=["Review error details and fix packet format"]
+                )
+                packet.validation_results = validation_results
+                
+                # Add processing step: validation failed
+                packet.add_processing_step(
+                    step_name="validation_failed",
+                    step_type="ERROR_HANDLING",
+                    status="FAILED",
+                    error_details=packet.error_details
+                )
+                
+                # Return packet with all error details for host agent to analyze
                 return {
                     "success": False,
-                    "error": "Invalid packet structure",
-                    "packet_id": packet.packet_id
+                    "error": "Packet validation failed",
+                    "packet": packet.to_dict(),
+                    "validation_results": validation_results.to_dict()
                 }
+            
+            # TRIPWIRE 2: Service Availability Check
+            service_availability_result = self.service_tripwires.validate_service_availability(packet)
+            if not service_availability_result.is_valid:
+                packet.status = PacketStatus.ERROR
+                packet.error_details = service_availability_result.validation_errors[0]
+                
+                # Add processing step: routing failed
+                packet.add_processing_step(
+                    step_name="service_routing",
+                    step_type="ROUTING",
+                    status="FAILED",
+                    error_details=packet.error_details
+                )
+                
+                return {
+                    "success": False,
+                    "error": "Service not available",
+                    "packet": packet.to_dict()
+                }
+            
+            # Add processing step: routing successful
+            packet.add_processing_step(
+                step_name="service_routing",
+                step_type="ROUTING",
+                status="SUCCESS",
+                details={"target_service": packet.tool_type}
+            )
+            
+            # TRIPWIRE 3: Action Support Check
+            action_support_result = self.service_tripwires.validate_action_support(packet)
+            if not action_support_result.is_valid:
+                packet.status = PacketStatus.ERROR
+                packet.error_details = action_support_result.validation_errors[0]
+                
+                # Add processing step: action validation failed
+                packet.add_processing_step(
+                    step_name="action_validation",
+                    step_type="VALIDATION",
+                    status="FAILED",
+                    error_details=packet.error_details
+                )
+                
+                return {
+                    "success": False,
+                    "error": "Action not supported",
+                    "packet": packet.to_dict()
+                }
+            
+            # Add processing step: action validation successful
+            packet.add_processing_step(
+                step_name="action_validation",
+                step_type="VALIDATION",
+                status="SUCCESS",
+                details={"supported_action": packet.action}
+            )
+            
+            # TRIPWIRE 4: Item Type Support Check
+            item_type_support_result = self.service_tripwires.validate_item_type_support(packet)
+            if not item_type_support_result.is_valid:
+                packet.status = PacketStatus.ERROR
+                packet.error_details = item_type_support_result.validation_errors[0]
+                
+                # Add processing step: item type validation failed
+                packet.add_processing_step(
+                    step_name="item_type_validation",
+                    step_type="VALIDATION",
+                    status="FAILED",
+                    error_details=packet.error_details
+                )
+                
+                return {
+                    "success": False,
+                    "error": "Item type not supported",
+                    "packet": packet.to_dict()
+                }
+            
+            # Add processing step: item type validation successful
+            packet.add_processing_step(
+                step_name="item_type_validation",
+                step_type="VALIDATION",
+                status="SUCCESS",
+                details={"supported_item_type": packet.item_type}
+            )
             
             # Get appropriate service handler
             service_handler = self.service_handlers.get(packet.tool_type)
-            if not service_handler:
-                return {
-                    "success": False,
-                    "error": f"Unknown service: {packet.tool_type}",
-                    "packet_id": packet.packet_id
-                }
             
             # Load relevant tools for this operation
             await self._load_service_tools_if_needed(packet.tool_type)
             
-            # Execute the packet
-            result = await service_handler.execute(packet.action, packet.payload)
-            
-            # Track execution
-            execution_time = time.time() - start_time
-            self.execution_history[packet.packet_id] = {
-                "packet": packet.to_dict(),
-                "result": result,
-                "execution_time": execution_time,
-                "timestamp": datetime.utcnow().isoformat()
-            }
-            
-            return {
-                "success": True,
-                "packet_id": packet.packet_id,
-                "result": result,
-                "execution_time": execution_time
-            }
+            # TRIPWIRE 5: Execute the packet
+            try:
+                execution_start = time.time()
+                result = await service_handler.execute(packet.action, packet.payload)
+                execution_duration = (time.time() - execution_start) * 1000
+                
+                # Add processing step: execution successful
+                packet.add_processing_step(
+                    step_name="packet_execution",
+                    step_type="EXECUTION",
+                    status="SUCCESS",
+                    duration_ms=execution_duration,
+                    details={"result_summary": str(result)[:100] + "..." if len(str(result)) > 100 else str(result)}
+                )
+                
+                packet.status = PacketStatus.SUCCESS
+                packet.validation_results = validation_results
+                
+                # Track execution
+                execution_time = time.time() - start_time
+                self.execution_history[packet.packet_id] = {
+                    "packet": packet.to_dict(),
+                    "result": result,
+                    "execution_time": execution_time,
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+                
+                return {
+                    "success": True,
+                    "data": result,
+                    "packet": packet.to_dict(),
+                    "execution_duration_ms": execution_duration
+                }
+                
+            except Exception as e:
+                # TRIPWIRE 5: Execution Error Handling
+                packet.status = PacketStatus.ERROR
+                packet.error_details = ErrorDetails(
+                    error_type="EXECUTION_ERROR",
+                    error_code="SERVICE_EXECUTION_FAILED",
+                    error_message=f"Service execution failed: {str(e)}",
+                    error_location="service_execution",
+                    field_path=["execution"],
+                    actual_value=f"Exception: {type(e).__name__}: {str(e)}",
+                    suggestions=[
+                        "Check service connectivity",
+                        "Verify payload parameters",
+                        "Review service logs"
+                    ]
+                )
+                
+                # Add processing step: execution failed
+                packet.add_processing_step(
+                    step_name="packet_execution",
+                    step_type="EXECUTION",
+                    status="FAILED",
+                    error_details=packet.error_details
+                )
+                
+                return {
+                    "success": False,
+                    "error": "Service execution failed",
+                    "packet": packet.to_dict(),
+                    "validation_results": validation_results.to_dict()
+                }
             
         except Exception as e:
+            # Critical error in packet processing
             execution_time = time.time() - start_time
             return {
                 "success": False,
-                "error": str(e),
-                "execution_time": execution_time
+                "error": f"Critical packet processing error: {str(e)}",
+                "execution_time": execution_time,
+                "packet_id": packet.packet_id if 'packet' in locals() else None
             }
     
     async def _load_service_tools_if_needed(self, service_name: str):
